@@ -1,0 +1,61 @@
+﻿version: "3.8"
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: github_search_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: github_search
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d github_search"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: github_search_api
+    restart: unless-stopped
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+    environment:
+      - POSTGRES_URL=postgresql://postgres:postgres@db:5432/github_search
+      - USE_POSTGRES=true
+      - DATASET_PATH=/app/repo_metadata.json
+      - AUTO_INGEST_ON_STARTUP=true
+      - AUTO_INGEST_SAMPLE_SIZE=1000
+      - INDEX_STORE_PATH=/app/data/search_index.pkl
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - app_data:/app/data
+      - ./repo_metadata.json:/app/repo_metadata.json:ro
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: github_search_frontend
+    restart: unless-stopped
+    command: streamlit run src/frontend/app.py --server.port 8501 --server.address 0.0.0.0
+    environment:
+      - FASTAPI_URL=http://api:8000/api
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  app_data:

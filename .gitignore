@@ -1,0 +1,99 @@
+# ==============================================================================
+# Python
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ==============================================================================
+# Virtual Environments
+# ==============================================================================
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# ==============================================================================
+# Environment Variables & Secrets
+# ==============================================================================
+.env
+.env.local
+.env.*.local
+*.env
+.secrets/
+.streamlit/secrets.toml
+
+# ==============================================================================
+# Project Datasets, Indexes & Model Caches
+# ==============================================================
+# Large raw datasets
+repo_metadata.json
+*.jsonl
+
+# Processed index store and local data
+data/*
+!data/.gitkeep
+
+# ML models and embeddings
+*.pkl
+*.pickle
+*.parquet
+*.feather
+models/
+embeddings/
+.cache/
+huggingface/
+
+# ==============================================================================
+# Testing & Code Quality
+# ==============================================================================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+coverage.xml
+*.cover
+
+# ==============================================================================
+# Logs & Databases
+# ==============================================================================
+*.log
+logs/
+*.sqlite3
+*.db
+pgdata/
+app_data/
+
+# ==============================================================================
+# IDE & OS Artifacts
+# ==============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
