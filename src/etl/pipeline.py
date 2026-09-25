@@ -84,9 +84,10 @@ def stream_and_ingest_dataset(
                     db.commit()
                     saved_count += len(batch_records)
                     batch_records = []
-                    elapsed = time.time() - start_time
-                    rate = saved_count / max(0.001, elapsed)
-                    print(f"[ETL Pipeline] Ingested & Saved {saved_count:,} repos ({rate:.1f} repos/sec)...")
+                    if saved_count % 100000 == 0:
+                        elapsed = time.time() - start_time
+                        rate = saved_count / max(0.001, elapsed)
+                        print(f"[ETL Pipeline] Ingested & Saved {saved_count:,} repos ({rate:.1f} repos/sec)...")
 
                 if sample_size and (saved_count + len(batch_records)) >= sample_size:
                     break

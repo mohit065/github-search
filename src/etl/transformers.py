@@ -13,6 +13,8 @@ def clean_text(text: Optional[str]) -> str:
     """Sanitize and normalize string content."""
     if not text:
         return ""
+    # Strip NUL bytes ? PostgreSQL rejects strings containing \x00
+    text = text.replace("\x00", "")
     # Strip HTML tags
     cleaned = HTML_TAG_RE.sub(" ", text)
     # Normalize whitespace & newlines

@@ -1,4 +1,4 @@
-﻿from typing import Optional, List
+from typing import Optional, List
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -9,24 +9,27 @@ from src.api.schemas import (
     RepositoryItem,
     DatasetStatsResponse,
     HealthResponse,
-    LanguageStat
+    LanguageStat,
 )
 
 router = APIRouter()
 
-# Lazy getter ? avoids importing the singleton at module load time
 def get_engine():
+    """Lazy getter ? engine is a singleton, instantiated after DB ingestion."""
     from src.search.engine import HybridSearchEngine
     return HybridSearchEngine()
+
 
 @router.get("/health", response_model=HealthResponse)
 def health_check():
     engine = get_engine()
+    status = "ready" if engine._total_indexed > 0 else "warming_up"
     return HealthResponse(
-        status="healthy",
+        status=status,
         project="GitHub Semantic Search Engine",
-        total_indexed=len(engine.repo_ids)
+        total_indexed=engine._total_indexed,
     )
+
 
 @router.get("/search", response_model=SearchResponse)
 def search_repositories(
@@ -36,14 +39,15 @@ def search_repositories(
     min_stars: int = Query(0, ge=0),
     sort_by: str = Query("relevance", pattern="^(relevance|stars|activity|recency)$"),
     limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0)
+    offset: int = Query(0, ge=0),
 ):
     engine = get_engine()
     return engine.search(
         query=q, mode=mode, language=language,
         min_stars=min_stars, sort_by=sort_by,
-        limit=limit, offset=offset
+        limit=limit, offset=offset,
     )
+
 
 @router.get("/repos/{owner}/{name}", response_model=RepositoryItem)
 def get_repository(owner: str, name: str, db: Session = Depends(get_db)):
@@ -54,17 +58,21 @@ def get_repository(owner: str, name: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Repository not found")
     return repo.to_dict()
 
+
 @router.get("/languages", response_model=List[str])
 def get_available_languages(db: Session = Depends(get_db)):
     results = (
         db.query(Repository.primary_language)
-        .filter(Repository.primary_language != "Unknown",
-                Repository.primary_language.isnot(None))
+        .filter(
+            Repository.primary_language.isnot(None),
+            Repository.primary_language != "Unknown",
+        )
         .distinct()
         .order_by(Repository.primary_language.asc())
         .all()
     )
     return [r[0] for r in results if r[0]]
+
 
 @router.get("/stats", response_model=DatasetStatsResponse)
 def get_dataset_stats(db: Session = Depends(get_db)):
@@ -72,21 +80,21 @@ def get_dataset_stats(db: Session = Depends(get_db)):
     total = db.query(func.count(Repository.id)).scalar() or 0
     avg_stars = db.query(func.avg(Repository.stars)).scalar() or 0.0
     avg_activity = db.query(func.avg(Repository.activity_score)).scalar() or 0.0
-
     top_langs = (
         db.query(Repository.primary_language, func.count(Repository.id).label("c"))
-        .filter(Repository.primary_language != "Unknown",
-                Repository.primary_language.isnot(None))
+        .filter(
+            Repository.primary_language.isnot(None),
+            Repository.primary_language != "Unknown",
+        )
         .group_by(Repository.primary_language)
         .order_by(func.count(Repository.id).desc())
         .limit(10)
         .all()
     )
-
     return DatasetStatsResponse(
         total_repositories=total,
-        indexed_in_search=len(engine.repo_ids),
+        indexed_in_search=engine._total_indexed,
         top_languages=[LanguageStat(language=l, count=c) for l, c in top_langs],
         avg_stars=round(float(avg_stars), 2),
-        avg_activity_score=round(float(avg_activity), 4)
+        avg_activity_score=round(float(avg_activity), 4),
     )
